@@ -34,19 +34,6 @@ func setupTestResponder(t *testing.T) (*Responder, *testPKI, *InMemorySource) {
 	return responder, pki, source
 }
 
-func createOCSPRequest(t *testing.T, pki *testPKI, serial *big.Int) []byte {
-	t.Helper()
-
-	req, err := ocsp.CreateRequest(pki.EndEntityCert, pki.IssuerCert, &ocsp.RequestOptions{
-		Hash: crypto.SHA256,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create OCSP request: %v", err)
-	}
-
-	return req
-}
-
 // RFC 6960 Section 4.1.1: OCSP requests via HTTP POST
 func TestResponder_POST(t *testing.T) {
 	responder, pki, _ := setupTestResponder(t)
@@ -67,7 +54,7 @@ func TestResponder_POST(t *testing.T) {
 	responder.ServeHTTP(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// RFC 6960 Appendix A.1: Successful response should be 200 OK
 	if resp.StatusCode != http.StatusOK {
@@ -114,7 +101,7 @@ func TestResponder_GET(t *testing.T) {
 	responder.ServeHTTP(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -240,7 +227,7 @@ func TestResponder_MalformedRequest(t *testing.T) {
 	responder.ServeHTTP(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// RFC 6960: Even errors should return 200 OK with error in OCSP response
 	if resp.StatusCode != http.StatusOK {
@@ -326,7 +313,7 @@ func TestInMemorySource_Concurrent(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			serial := big.NewInt(int64(i))
-			source.Response(serial)
+			_, _ = source.Response(serial)
 		}
 		done <- true
 	}()

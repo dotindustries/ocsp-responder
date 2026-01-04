@@ -350,13 +350,31 @@ func TestRFC6960_IssuerIdentification(t *testing.T) {
 	issuerNameHashSHA1 := sha1.Sum(pki.IssuerCert.RawSubject)
 	issuerKeyHashSHA1 := sha1.Sum(pki.IssuerCert.RawSubjectPublicKeyInfo)
 
-	// These hashes should be deterministic
-	if len(issuerNameHash) != 32 || len(issuerKeyHash) != 32 {
-		t.Error("SHA256 hashes should be 32 bytes")
+	// These hashes should be deterministic and have correct length
+	// Use slices to actually access the hash values
+	if len(issuerNameHash[:]) != 32 {
+		t.Errorf("issuerNameHash should be 32 bytes, got %d", len(issuerNameHash[:]))
+	}
+	if len(issuerKeyHash[:]) != 32 {
+		t.Errorf("issuerKeyHash should be 32 bytes, got %d", len(issuerKeyHash[:]))
+	}
+	if len(issuerNameHashSHA1[:]) != 20 {
+		t.Errorf("issuerNameHashSHA1 should be 20 bytes, got %d", len(issuerNameHashSHA1[:]))
+	}
+	if len(issuerKeyHashSHA1[:]) != 20 {
+		t.Errorf("issuerKeyHashSHA1 should be 20 bytes, got %d", len(issuerKeyHashSHA1[:]))
 	}
 
-	if len(issuerNameHashSHA1) != 20 || len(issuerKeyHashSHA1) != 20 {
-		t.Error("SHA1 hashes should be 20 bytes")
+	// Verify hashes are not all zeros (sanity check)
+	allZero := true
+	for _, b := range issuerNameHash[:] {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+	if allZero {
+		t.Error("issuerNameHash should not be all zeros")
 	}
 }
 

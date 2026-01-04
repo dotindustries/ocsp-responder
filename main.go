@@ -121,7 +121,9 @@ func main() {
 		log.Fatalf("Failed to create source: %v", err)
 	}
 	if closeSource != nil {
-		defer closeSource()
+		defer func() {
+			_ = closeSource()
+		}()
 	}
 
 	// Create responder
@@ -149,7 +151,7 @@ func main() {
 			}
 		}
 
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	})
 
 	// OCSP endpoint - handles all other paths

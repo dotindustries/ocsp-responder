@@ -68,7 +68,7 @@ func TestCRLCache_Response_Good(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	// Check non-revoked cert
 	status, err := cache.Response(big.NewInt(99999))
@@ -91,7 +91,7 @@ func TestCRLCache_Response_Revoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	status, err := cache.Response(revokedSerial)
 	if err != nil {
@@ -116,7 +116,7 @@ func TestCRLCache_MultipleRevoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	for _, serial := range revokedSerials {
 		if !cache.IsRevoked(serial) {
@@ -140,7 +140,7 @@ func TestCRLCache_Stats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	stats := cache.Stats()
 	if stats.RevokedCount != 3 {
@@ -162,7 +162,7 @@ func TestCRLCache_GetRevokedCerts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	certs := cache.GetRevokedCerts()
 	if len(certs) != 2 {
@@ -180,7 +180,7 @@ func TestCRLCache_EmptyCRL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	status, _ := cache.Response(big.NewInt(12345))
 	if status.Status != "good" {
@@ -220,7 +220,7 @@ func TestCRLCache_DefaultRefreshInterval(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	if cache.refreshInterval != 5*time.Minute {
 		t.Errorf("Expected default 5m, got %v", cache.refreshInterval)
@@ -251,7 +251,7 @@ func TestCRLCache_Refresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	// Initially not revoked
 	if cache.IsRevoked(big.NewInt(999)) {

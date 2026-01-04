@@ -24,7 +24,7 @@ func TestFileSource_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	if source.Stats().RevokedCount != 1 {
 		t.Errorf("Expected 1 revoked, got %d", source.Stats().RevokedCount)
@@ -56,7 +56,9 @@ func TestFileSource_Revoked(t *testing.T) {
 
 	dir := t.TempDir()
 	crlPath := filepath.Join(dir, "test.crl")
-	os.WriteFile(crlPath, crlData, 0644)
+	if err := os.WriteFile(crlPath, crlData, 0644); err != nil {
+		t.Fatalf("Failed to write CRL file: %v", err)
+	}
 
 	source, err := NewFileSource(FileSourceConfig{
 		Path:            crlPath,
@@ -65,7 +67,7 @@ func TestFileSource_Revoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	if !source.IsRevoked(revokedSerial) {
 		t.Error("Expected serial 789 to be revoked")
@@ -78,7 +80,9 @@ func TestFileSource_Response(t *testing.T) {
 
 	dir := t.TempDir()
 	crlPath := filepath.Join(dir, "test.crl")
-	os.WriteFile(crlPath, crlData, 0644)
+	if err := os.WriteFile(crlPath, crlData, 0644); err != nil {
+		t.Fatalf("Failed to write CRL file: %v", err)
+	}
 
 	source, err := NewFileSource(FileSourceConfig{
 		Path:            crlPath,
@@ -87,7 +91,7 @@ func TestFileSource_Response(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	// Check revoked
 	status, err := source.Response(revokedSerial)
@@ -114,7 +118,9 @@ func TestFileSource_MultipleRevoked(t *testing.T) {
 
 	dir := t.TempDir()
 	crlPath := filepath.Join(dir, "test.crl")
-	os.WriteFile(crlPath, crlData, 0644)
+	if err := os.WriteFile(crlPath, crlData, 0644); err != nil {
+		t.Fatalf("Failed to write CRL file: %v", err)
+	}
 
 	source, err := NewFileSource(FileSourceConfig{
 		Path:            crlPath,
@@ -123,7 +129,7 @@ func TestFileSource_MultipleRevoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	for _, serial := range revokedSerials {
 		if !source.IsRevoked(serial) {

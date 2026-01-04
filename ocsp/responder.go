@@ -135,7 +135,7 @@ func (r *Responder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(result.response)
+	_, _ = w.Write(result.response)
 }
 
 func (r *Responder) parseGetRequest(req *http.Request) ([]byte, error) {
@@ -221,5 +221,5 @@ func (r *Responder) writeError(w http.ResponseWriter, status ocsp.ResponseStatus
 	// Create a minimal error response
 	w.Header().Set("Content-Type", ocspContentType)
 	w.WriteHeader(http.StatusOK) // OCSP uses 200 OK even for errors
-	w.Write([]byte{0x30, 0x03, 0x0a, 0x01, byte(status)})
+	_, _ = w.Write([]byte{0x30, 0x03, 0x0a, 0x01, byte(status)})
 }

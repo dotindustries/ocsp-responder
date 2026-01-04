@@ -60,18 +60,24 @@ func createTestFiles(t *testing.T) *testFiles {
 	// Write issuer cert
 	issuerFile := filepath.Join(dir, "issuer.pem")
 	issuerPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: issuerDER})
-	os.WriteFile(issuerFile, issuerPEM, 0644)
+	if err := os.WriteFile(issuerFile, issuerPEM, 0644); err != nil {
+		t.Fatalf("Failed to write issuer file: %v", err)
+	}
 
 	// Write responder cert
 	responderFile := filepath.Join(dir, "responder.pem")
 	responderPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: responderDER})
-	os.WriteFile(responderFile, responderPEM, 0644)
+	if err := os.WriteFile(responderFile, responderPEM, 0644); err != nil {
+		t.Fatalf("Failed to write responder file: %v", err)
+	}
 
 	// Write responder key
 	keyFile := filepath.Join(dir, "responder-key.pem")
 	keyDER, _ := x509.MarshalPKCS8PrivateKey(responderKey)
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
-	os.WriteFile(keyFile, keyPEM, 0600)
+	if err := os.WriteFile(keyFile, keyPEM, 0600); err != nil {
+		t.Fatalf("Failed to write key file: %v", err)
+	}
 
 	return &testFiles{
 		dir:           dir,
@@ -82,7 +88,7 @@ func createTestFiles(t *testing.T) *testFiles {
 }
 
 func (tf *testFiles) cleanup() {
-	os.RemoveAll(tf.dir)
+	_ = os.RemoveAll(tf.dir)
 }
 
 func TestNewSignerFromFile_Valid(t *testing.T) {
@@ -140,7 +146,9 @@ func TestNewSignerFromFile_InvalidIssuer(t *testing.T) {
 	defer files.cleanup()
 
 	// Write invalid data to issuer file
-	os.WriteFile(files.issuerFile, []byte("not a certificate"), 0644)
+	if err := os.WriteFile(files.issuerFile, []byte("not a certificate"), 0644); err != nil {
+		t.Fatalf("Failed to write issuer file: %v", err)
+	}
 
 	_, err := NewSignerFromFile(files.issuerFile, files.responderFile, files.keyFile, time.Hour)
 	if err == nil {
@@ -153,7 +161,9 @@ func TestNewSignerFromFile_InvalidResponder(t *testing.T) {
 	defer files.cleanup()
 
 	// Write invalid data to responder file
-	os.WriteFile(files.responderFile, []byte("not a certificate"), 0644)
+	if err := os.WriteFile(files.responderFile, []byte("not a certificate"), 0644); err != nil {
+		t.Fatalf("Failed to write responder file: %v", err)
+	}
 
 	_, err := NewSignerFromFile(files.issuerFile, files.responderFile, files.keyFile, time.Hour)
 	if err == nil {
@@ -166,7 +176,9 @@ func TestNewSignerFromFile_InvalidKey(t *testing.T) {
 	defer files.cleanup()
 
 	// Write invalid data to key file
-	os.WriteFile(files.keyFile, []byte("not a key"), 0600)
+	if err := os.WriteFile(files.keyFile, []byte("not a key"), 0600); err != nil {
+		t.Fatalf("Failed to write key file: %v", err)
+	}
 
 	_, err := NewSignerFromFile(files.issuerFile, files.responderFile, files.keyFile, time.Hour)
 	if err == nil {

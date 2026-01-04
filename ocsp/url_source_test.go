@@ -13,7 +13,7 @@ func TestURLSource_Success(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(crlData)
+		_, _ = w.Write(crlData)
 	}))
 	defer server.Close()
 
@@ -24,7 +24,7 @@ func TestURLSource_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	if source.Stats().RevokedCount != 1 {
 		t.Errorf("Expected 1 revoked, got %d", source.Stats().RevokedCount)
@@ -71,7 +71,7 @@ func TestURLSource_Revoked(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(crlData)
+		_, _ = w.Write(crlData)
 	}))
 	defer server.Close()
 
@@ -82,7 +82,7 @@ func TestURLSource_Revoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	if !source.IsRevoked(revokedSerial) {
 		t.Error("Expected serial 42 to be revoked")
@@ -95,7 +95,7 @@ func TestURLSource_Response(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(crlData)
+		_, _ = w.Write(crlData)
 	}))
 	defer server.Close()
 
@@ -106,7 +106,7 @@ func TestURLSource_Response(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create source: %v", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	// Check revoked
 	status, err := source.Response(revokedSerial)
