@@ -427,6 +427,10 @@ func (e *ErrorSource) Response(serial *big.Int) (*CertStatus, error) {
 	return nil, e.err
 }
 
+func (e *ErrorSource) Stats() CRLStats {
+	return CRLStats{}
+}
+
 // Test source returning an error
 func TestResponder_SourceError(t *testing.T) {
 	pki, err := newTestPKI()

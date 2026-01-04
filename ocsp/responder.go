@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/crypto/ocsp"
@@ -27,10 +26,10 @@ type ocspRequest struct {
 }
 
 type tbsRequest struct {
-	Version       int              `asn1:"optional,explicit,default:0,tag:0"`
-	RequestorName asn1.RawValue    `asn1:"optional,explicit,tag:1"`
-	RequestList   []asn1.RawValue  // We don't need to parse these
-	Extensions    []pkixExtension  `asn1:"optional,explicit,tag:2"`
+	Version       int             `asn1:"optional,explicit,default:0,tag:0"`
+	RequestorName asn1.RawValue   `asn1:"optional,explicit,tag:1"`
+	RequestList   []asn1.RawValue // We don't need to parse these
+	Extensions    []pkixExtension `asn1:"optional,explicit,tag:2"`
 }
 
 type pkixExtension struct {
@@ -77,39 +76,7 @@ type CertStatus struct {
 // Source is an interface for looking up certificate status
 type Source interface {
 	Response(serial *big.Int) (*CertStatus, error)
-}
-
-// InMemorySource is a simple in-memory certificate status store
-type InMemorySource struct {
-	mu       sync.RWMutex
-	statuses map[string]*CertStatus
-}
-
-// NewInMemorySource creates a new in-memory source
-func NewInMemorySource() *InMemorySource {
-	return &InMemorySource{
-		statuses: make(map[string]*CertStatus),
-	}
-}
-
-// SetStatus sets the status for a certificate serial number
-func (s *InMemorySource) SetStatus(serial *big.Int, status *CertStatus) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.statuses[serial.String()] = status
-}
-
-// Response returns the status for a certificate serial number
-func (s *InMemorySource) Response(serial *big.Int) (*CertStatus, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	status, ok := s.statuses[serial.String()]
-	if !ok {
-		// Default to "good" if not found (you may want to change this to "unknown")
-		return &CertStatus{Status: "good"}, nil
-	}
-	return status, nil
+	Stats() CRLStats
 }
 
 // Responder is an HTTP handler for OCSP requests
