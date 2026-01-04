@@ -1,4 +1,4 @@
-module github.com/dot-inc/ocsp-responder
+module github.com/dotindustries/ocsp-responder
 
 go 1.24.0
 

@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dot-inc/ocsp-responder/ocsp"
+	"github.com/dotindustries/ocsp-responder/ocsp"
 )
 
 // SourceConfig holds configuration for creating a certificate status source

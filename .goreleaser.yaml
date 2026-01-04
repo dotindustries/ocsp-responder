@@ -60,7 +60,7 @@ changelog:
 
 release:
   github:
-    owner: dot-inc
+    owner: dotindustries
     name: ocsp-responder
   draft: false
   prerelease: auto

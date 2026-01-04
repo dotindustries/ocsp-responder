@@ -20,13 +20,13 @@ A lightweight, RFC 6960 compliant OCSP responder written in Go. Designed for use
 ### From Source
 
 ```bash
-go install github.com/dot-inc/ocsp-responder@latest
+go install github.com/dotindustries/ocsp-responder@latest
 ```
 
 Or clone and build:
 
 ```bash
-git clone https://github.com/dot-inc/ocsp-responder.git
+git clone https://github.com/dotindustries/ocsp-responder.git
 cd ocsp-responder
 make build
 ```
@@ -35,9 +35,9 @@ make build
 
 ```bash
 # Pull from GitHub Container Registry
-podman pull ghcr.io/dot-inc/ocsp-responder:latest
+podman pull ghcr.io/dotindustries/ocsp-responder:latest
 # or with Docker
-docker pull ghcr.io/dot-inc/ocsp-responder:latest
+docker pull ghcr.io/dotindustries/ocsp-responder:latest
 ```
 
 Or build locally (Podman recommended for better caching):
@@ -232,7 +232,7 @@ Run with Podman (recommended):
 ```bash
 podman run -p 8080:8080 \
   -v /path/to/certs:/certs:ro,Z \
-  ghcr.io/dot-inc/ocsp-responder:latest \
+  ghcr.io/dotindustries/ocsp-responder:latest \
   -issuer /certs/ca.pem \
   -responder /certs/ocsp.pem \
   -key /certs/ocsp-key.pem \
@@ -244,7 +244,7 @@ Or with Docker:
 ```bash
 docker run -p 8080:8080 \
   -v /path/to/certs:/certs:ro \
-  ghcr.io/dot-inc/ocsp-responder:latest \
+  ghcr.io/dotindustries/ocsp-responder:latest \
   -issuer /certs/ca.pem \
   -responder /certs/ocsp.pem \
   -key /certs/ocsp-key.pem \

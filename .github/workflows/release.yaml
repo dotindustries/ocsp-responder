@@ -43,11 +43,11 @@ jobs:
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ github.ref_name }}" \
             --platform linux/amd64 \
-            -t ghcr.io/dot-inc/ocsp-responder:${{ github.ref_name }} \
-            -t ghcr.io/dot-inc/ocsp-responder:latest \
+            -t ghcr.io/dotindustries/ocsp-responder:${{ github.ref_name }} \
+            -t ghcr.io/dotindustries/ocsp-responder:latest \
             .
 
       - name: Push container image
         run: |
-          podman push ghcr.io/dot-inc/ocsp-responder:${{ github.ref_name }}
-          podman push ghcr.io/dot-inc/ocsp-responder:latest
+          podman push ghcr.io/dotindustries/ocsp-responder:${{ github.ref_name }}
+          podman push ghcr.io/dotindustries/ocsp-responder:latest
