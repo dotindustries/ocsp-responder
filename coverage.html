@@ -1,0 +1,588 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>ocsp: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/dot-inc/ocsp-responder/ocsp/helpers.go (96.3%)</option>
+				
+				<option value="file1">github.com/dot-inc/ocsp-responder/ocsp/responder.go (95.8%)</option>
+				
+				<option value="file2">github.com/dot-inc/ocsp-responder/ocsp/signer.go (97.7%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package ocsp
+
+import (
+        "crypto"
+        "crypto/ecdsa"
+        "crypto/ed25519"
+        "crypto/rsa"
+        "crypto/x509"
+        "encoding/pem"
+        "errors"
+)
+
+// ParseCertificatePEM parses a PEM-encoded certificate
+func ParseCertificatePEM(data []byte) (*x509.Certificate, error) <span class="cov8" title="1">{
+        block, _ := pem.Decode(data)
+        if block == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("failed to decode PEM block")
+        }</span>
+
+        <span class="cov8" title="1">if block.Type != "CERTIFICATE" </span><span class="cov8" title="1">{
+                return nil, errors.New("PEM block is not a certificate")
+        }</span>
+
+        <span class="cov8" title="1">return x509.ParseCertificate(block.Bytes)</span>
+}
+
+// ParsePrivateKeyPEM parses a PEM-encoded private key
+func ParsePrivateKeyPEM(data []byte) (crypto.Signer, error) <span class="cov8" title="1">{
+        block, _ := pem.Decode(data)
+        if block == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("failed to decode PEM block")
+        }</span>
+
+        <span class="cov8" title="1">switch block.Type </span>{
+        case "RSA PRIVATE KEY":<span class="cov8" title="1">
+                key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">return key, nil</span>
+
+        case "EC PRIVATE KEY":<span class="cov8" title="1">
+                key, err := x509.ParseECPrivateKey(block.Bytes)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">return key, nil</span>
+
+        case "PRIVATE KEY":<span class="cov8" title="1">
+                key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">switch k := key.(type) </span>{
+                case *rsa.PrivateKey:<span class="cov8" title="1">
+                        return k, nil</span>
+                case *ecdsa.PrivateKey:<span class="cov8" title="1">
+                        return k, nil</span>
+                case ed25519.PrivateKey:<span class="cov8" title="1">
+                        return k, nil</span>
+                default:<span class="cov0" title="0">
+                        return nil, errors.New("unsupported private key type")</span>
+                }
+
+        default:<span class="cov8" title="1">
+                return nil, errors.New("unsupported PEM block type: " + block.Type)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package ocsp
+
+import (
+        "crypto/x509"
+        "encoding/asn1"
+        "encoding/base64"
+        "errors"
+        "io"
+        "log"
+        "math/big"
+        "net/http"
+        "net/url"
+        "strings"
+        "sync"
+        "time"
+
+        "golang.org/x/crypto/ocsp"
+)
+
+// ErrMalformedRequest indicates the OCSP request could not be parsed
+var ErrMalformedRequest = errors.New("malformed OCSP request")
+
+// ocspRequest is used to parse the raw OCSP request for extensions
+// RFC 6960 Section 4.1.1
+type ocspRequest struct {
+        TBSRequest tbsRequest
+}
+
+type tbsRequest struct {
+        Version       int              `asn1:"optional,explicit,default:0,tag:0"`
+        RequestorName asn1.RawValue    `asn1:"optional,explicit,tag:1"`
+        RequestList   []asn1.RawValue  // We don't need to parse these
+        Extensions    []pkixExtension  `asn1:"optional,explicit,tag:2"`
+}
+
+type pkixExtension struct {
+        Id       asn1.ObjectIdentifier
+        Critical bool `asn1:"optional"`
+        Value    []byte
+}
+
+// extractNonce extracts the nonce extension from an OCSP request if present
+func extractNonce(requestBytes []byte) []byte <span class="cov8" title="1">{
+        var req ocspRequest
+        rest, err := asn1.Unmarshal(requestBytes, &amp;req)
+        if err != nil || len(rest) &gt; 0 </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">for _, ext := range req.TBSRequest.Extensions </span><span class="cov8" title="1">{
+                if ext.Id.Equal(OIDOCSPNonce) </span><span class="cov8" title="1">{
+                        // The nonce value is an OCTET STRING, but may be double-wrapped
+                        // Try to unwrap if it's an OCTET STRING
+                        var nonce []byte
+                        if _, err := asn1.Unmarshal(ext.Value, &amp;nonce); err == nil </span><span class="cov8" title="1">{
+                                return nonce
+                        }</span>
+                        // If unwrap fails, return raw value
+                        <span class="cov0" title="0">return ext.Value</span>
+                }
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+const (
+        maxRequestSize  = 10 * 1024 // 10KB max request size
+        ocspContentType = "application/ocsp-response"
+)
+
+// CertStatus represents the status of a certificate
+type CertStatus struct {
+        Status    string    // "good", "revoked", "unknown"
+        RevokedAt time.Time // only used if Status is "revoked"
+        Reason    int       // revocation reason code
+}
+
+// Source is an interface for looking up certificate status
+type Source interface {
+        Response(serial *big.Int) (*CertStatus, error)
+}
+
+// InMemorySource is a simple in-memory certificate status store
+type InMemorySource struct {
+        mu       sync.RWMutex
+        statuses map[string]*CertStatus
+}
+
+// NewInMemorySource creates a new in-memory source
+func NewInMemorySource() *InMemorySource <span class="cov8" title="1">{
+        return &amp;InMemorySource{
+                statuses: make(map[string]*CertStatus),
+        }
+}</span>
+
+// SetStatus sets the status for a certificate serial number
+func (s *InMemorySource) SetStatus(serial *big.Int, status *CertStatus) <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        s.statuses[serial.String()] = status
+}</span>
+
+// Response returns the status for a certificate serial number
+func (s *InMemorySource) Response(serial *big.Int) (*CertStatus, error) <span class="cov8" title="1">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        status, ok := s.statuses[serial.String()]
+        if !ok </span><span class="cov8" title="1">{
+                // Default to "good" if not found (you may want to change this to "unknown")
+                return &amp;CertStatus{Status: "good"}, nil
+        }</span>
+        <span class="cov8" title="1">return status, nil</span>
+}
+
+// Responder is an HTTP handler for OCSP requests
+type Responder struct {
+        source Source
+        signer *StandardSigner
+}
+
+// NewResponder creates a new OCSP responder
+func NewResponder(source Source, signer Signer) *Responder <span class="cov8" title="1">{
+        return &amp;Responder{
+                source: source,
+                signer: signer.(*StandardSigner),
+        }
+}</span>
+
+// ServeHTTP handles OCSP requests via GET and POST
+func (r *Responder) ServeHTTP(w http.ResponseWriter, req *http.Request) <span class="cov8" title="1">{
+        var requestBytes []byte
+        var err error
+
+        switch req.Method </span>{
+        case http.MethodGet:<span class="cov8" title="1">
+                requestBytes, err = r.parseGetRequest(req)</span>
+        case http.MethodPost:<span class="cov8" title="1">
+                requestBytes, err = r.parsePostRequest(req)</span>
+        default:<span class="cov8" title="1">
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+                return</span>
+        }
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Error parsing request: %v", err)
+                r.writeError(w, ocsp.Malformed)
+                return
+        }</span>
+
+        <span class="cov8" title="1">result, err := r.handleRequest(requestBytes)
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Error handling request: %v", err)
+                if errors.Is(err, ErrMalformedRequest) </span><span class="cov8" title="1">{
+                        r.writeError(w, ocsp.Malformed)
+                }</span> else<span class="cov8" title="1"> {
+                        r.writeError(w, ocsp.InternalError)
+                }</span>
+                <span class="cov8" title="1">return</span>
+        }
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", ocspContentType)
+
+        // RFC 6960 Section 4.4.1: Responses with nonce should not be cached
+        if result.hasNonce </span><span class="cov8" title="1">{
+                w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+        }</span> else<span class="cov8" title="1"> {
+                w.Header().Set("Cache-Control", "max-age=3600, public, no-transform, must-revalidate")
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        w.Write(result.response)</span>
+}
+
+func (r *Responder) parseGetRequest(req *http.Request) ([]byte, error) <span class="cov8" title="1">{
+        // OCSP GET requests have the base64-encoded request in the URL path
+        path := req.URL.Path
+
+        // Remove leading slash and any prefix path
+        path = strings.TrimPrefix(path, "/")
+
+        // URL-decode the path
+        decoded, err := url.PathUnescape(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Base64 decode
+        <span class="cov8" title="1">return base64.StdEncoding.DecodeString(decoded)</span>
+}
+
+func (r *Responder) parsePostRequest(req *http.Request) ([]byte, error) <span class="cov8" title="1">{
+        if req.ContentLength &gt; maxRequestSize </span><span class="cov8" title="1">{
+                return nil, io.ErrShortBuffer
+        }</span>
+
+        <span class="cov8" title="1">return io.ReadAll(io.LimitReader(req.Body, maxRequestSize))</span>
+}
+
+// handleResult contains the OCSP response and metadata
+type handleResult struct {
+        response []byte
+        hasNonce bool
+}
+
+func (r *Responder) handleRequest(requestBytes []byte) (*handleResult, error) <span class="cov8" title="1">{
+        // Parse the OCSP request
+        ocspReq, err := ocsp.ParseRequest(requestBytes)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, errors.Join(ErrMalformedRequest, err)
+        }</span>
+
+        // Extract nonce if present (RFC 6960 Section 4.4.1)
+        <span class="cov8" title="1">nonce := extractNonce(requestBytes)
+
+        // Look up the certificate status
+        status, err := r.source.Response(ocspReq.SerialNumber)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        // Create sign request with minimal certificate info
+        <span class="cov8" title="1">signReq := SignRequest{
+                Certificate:    r.createMinimalCert(ocspReq.SerialNumber),
+                Status:         status.Status,
+                Reason:         status.Reason,
+                RevokedAt:      status.RevokedAt,
+                SkipValidation: true, // We only have serial, can't verify signature
+                Nonce:          nonce,
+        }
+
+        response, err := r.signer.Sign(signReq)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return &amp;handleResult{
+                response: response,
+                hasNonce: len(nonce) &gt; 0,
+        }, nil</span>
+}
+
+// createMinimalCert creates a minimal certificate for OCSP signing
+// The OCSP response only needs the serial number and issuer info
+func (r *Responder) createMinimalCert(serial *big.Int) *x509.Certificate <span class="cov8" title="1">{
+        return &amp;x509.Certificate{
+                SerialNumber:       serial,
+                RawIssuer:          r.signer.Issuer().RawSubject,
+                SignatureAlgorithm: r.signer.Issuer().SignatureAlgorithm,
+                Signature:          r.signer.Issuer().Signature,
+        }
+}</span>
+
+func (r *Responder) writeError(w http.ResponseWriter, status ocsp.ResponseStatus) <span class="cov8" title="1">{
+        // Create a minimal error response
+        w.Header().Set("Content-Type", ocspContentType)
+        w.WriteHeader(http.StatusOK) // OCSP uses 200 OK even for errors
+        w.Write([]byte{0x30, 0x03, 0x0a, 0x01, byte(status)})
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package ocsp
+
+import (
+        "crypto"
+        "crypto/x509"
+        "crypto/x509/pkix"
+        "encoding/asn1"
+        "errors"
+        "os"
+        "time"
+
+        "golang.org/x/crypto/ocsp"
+)
+
+// OIDOCSPNonce is the OID for the OCSP nonce extension (RFC 6960 Section 4.4.1)
+var OIDOCSPNonce = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 48, 1, 2}
+
+// StatusCode maps string statuses to OCSP int statuses
+var StatusCode = map[string]int{
+        "good":    ocsp.Good,
+        "revoked": ocsp.Revoked,
+        "unknown": ocsp.Unknown,
+}
+
+// SignRequest represents the desired contents of an OCSP response
+type SignRequest struct {
+        Certificate    *x509.Certificate
+        Status         string
+        Reason         int
+        RevokedAt      time.Time
+        IssuerHash     crypto.Hash
+        SkipValidation bool   // Skip issuer validation (for responder mode)
+        Nonce          []byte // Optional nonce from request (RFC 6960 Section 4.4.1)
+}
+
+// Signer represents a signer of OCSP responses
+type Signer interface {
+        Sign(req SignRequest) ([]byte, error)
+}
+
+// StandardSigner is the default OCSP signer implementation
+type StandardSigner struct {
+        issuer    *x509.Certificate
+        responder *x509.Certificate
+        key       crypto.Signer
+        interval  time.Duration
+}
+
+// NewSignerFromFile reads certs and key from PEM files
+func NewSignerFromFile(issuerFile, responderFile, keyFile string, interval time.Duration) (Signer, error) <span class="cov8" title="1">{
+        issuerBytes, err := os.ReadFile(issuerFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">responderBytes, err := os.ReadFile(responderFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">keyBytes, err := os.ReadFile(keyFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">issuerCert, err := ParseCertificatePEM(issuerBytes)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">responderCert, err := ParseCertificatePEM(responderBytes)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">key, err := ParsePrivateKeyPEM(keyBytes)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return NewSigner(issuerCert, responderCert, key, interval)</span>
+}
+
+// NewSigner constructs a new StandardSigner
+func NewSigner(issuer, responder *x509.Certificate, key crypto.Signer, interval time.Duration) (Signer, error) <span class="cov8" title="1">{
+        return &amp;StandardSigner{
+                issuer:    issuer,
+                responder: responder,
+                key:       key,
+                interval:  interval,
+        }, nil
+}</span>
+
+// Issuer returns the issuer certificate
+func (s *StandardSigner) Issuer() *x509.Certificate <span class="cov8" title="1">{
+        return s.issuer
+}</span>
+
+// Sign creates an OCSP response for the given request
+func (s *StandardSigner) Sign(req SignRequest) ([]byte, error) <span class="cov8" title="1">{
+        if req.Certificate == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("certificate is required")
+        }</span>
+
+        // Verify the certificate was issued by our issuer (unless skipped)
+        <span class="cov8" title="1">if !req.SkipValidation </span><span class="cov8" title="1">{
+                err := req.Certificate.CheckSignatureFrom(s.issuer)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, errors.New("certificate not issued by configured issuer")
+                }</span>
+        }
+
+        <span class="cov8" title="1">thisUpdate := time.Now().Truncate(time.Minute)
+        nextUpdate := thisUpdate.Add(s.interval)
+
+        status, ok := StatusCode[req.Status]
+        if !ok </span><span class="cov8" title="1">{
+                return nil, errors.New("invalid status")
+        }</span>
+
+        // Include responder cert unless it's the same as issuer
+        <span class="cov8" title="1">var certificate *x509.Certificate
+        if s.issuer != s.responder </span><span class="cov8" title="1">{
+                certificate = s.responder
+        }</span>
+
+        <span class="cov8" title="1">template := ocsp.Response{
+                Status:       status,
+                SerialNumber: req.Certificate.SerialNumber,
+                ThisUpdate:   thisUpdate,
+                NextUpdate:   nextUpdate,
+                Certificate:  certificate,
+                IssuerHash:   crypto.SHA256,
+        }
+
+        if status == ocsp.Revoked </span><span class="cov8" title="1">{
+                template.RevokedAt = req.RevokedAt
+                template.RevocationReason = req.Reason
+        }</span>
+
+        // RFC 6960 Section 4.4.1: Include nonce extension if present in request
+        <span class="cov8" title="1">if len(req.Nonce) &gt; 0 </span><span class="cov8" title="1">{
+                nonceExt := pkix.Extension{
+                        Id:    OIDOCSPNonce,
+                        Value: req.Nonce,
+                }
+                template.ExtraExtensions = append(template.ExtraExtensions, nonceExt)
+        }</span>
+
+        <span class="cov8" title="1">return ocsp.CreateResponse(s.issuer, s.responder, template, s.key)</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -3,12 +3,17 @@ package ocsp
 import (
 	"crypto"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"errors"
 	"os"
 	"time"
 
 	"golang.org/x/crypto/ocsp"
 )
+
+// OIDOCSPNonce is the OID for the OCSP nonce extension (RFC 6960 Section 4.4.1)
+var OIDOCSPNonce = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 48, 1, 2}
 
 // StatusCode maps string statuses to OCSP int statuses
 var StatusCode = map[string]int{
@@ -24,7 +29,8 @@ type SignRequest struct {
 	Reason         int
 	RevokedAt      time.Time
 	IssuerHash     crypto.Hash
-	SkipValidation bool // Skip issuer validation (for responder mode)
+	SkipValidation bool   // Skip issuer validation (for responder mode)
+	Nonce          []byte // Optional nonce from request (RFC 6960 Section 4.4.1)
 }
 
 // Signer represents a signer of OCSP responses
@@ -130,6 +136,15 @@ func (s *StandardSigner) Sign(req SignRequest) ([]byte, error) {
 	if status == ocsp.Revoked {
 		template.RevokedAt = req.RevokedAt
 		template.RevocationReason = req.Reason
+	}
+
+	// RFC 6960 Section 4.4.1: Include nonce extension if present in request
+	if len(req.Nonce) > 0 {
+		nonceExt := pkix.Extension{
+			Id:    OIDOCSPNonce,
+			Value: req.Nonce,
+		}
+		template.ExtraExtensions = append(template.ExtraExtensions, nonceExt)
 	}
 
 	return ocsp.CreateResponse(s.issuer, s.responder, template, s.key)

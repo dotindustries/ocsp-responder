@@ -2,7 +2,9 @@ package ocsp
 
 import (
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
+	"errors"
 	"io"
 	"log"
 	"math/big"
@@ -14,6 +16,51 @@ import (
 
 	"golang.org/x/crypto/ocsp"
 )
+
+// ErrMalformedRequest indicates the OCSP request could not be parsed
+var ErrMalformedRequest = errors.New("malformed OCSP request")
+
+// ocspRequest is used to parse the raw OCSP request for extensions
+// RFC 6960 Section 4.1.1
+type ocspRequest struct {
+	TBSRequest tbsRequest
+}
+
+type tbsRequest struct {
+	Version       int              `asn1:"optional,explicit,default:0,tag:0"`
+	RequestorName asn1.RawValue    `asn1:"optional,explicit,tag:1"`
+	RequestList   []asn1.RawValue  // We don't need to parse these
+	Extensions    []pkixExtension  `asn1:"optional,explicit,tag:2"`
+}
+
+type pkixExtension struct {
+	Id       asn1.ObjectIdentifier
+	Critical bool `asn1:"optional"`
+	Value    []byte
+}
+
+// extractNonce extracts the nonce extension from an OCSP request if present
+func extractNonce(requestBytes []byte) []byte {
+	var req ocspRequest
+	rest, err := asn1.Unmarshal(requestBytes, &req)
+	if err != nil || len(rest) > 0 {
+		return nil
+	}
+
+	for _, ext := range req.TBSRequest.Extensions {
+		if ext.Id.Equal(OIDOCSPNonce) {
+			// The nonce value is an OCTET STRING, but may be double-wrapped
+			// Try to unwrap if it's an OCTET STRING
+			var nonce []byte
+			if _, err := asn1.Unmarshal(ext.Value, &nonce); err == nil {
+				return nonce
+			}
+			// If unwrap fails, return raw value
+			return ext.Value
+		}
+	}
+	return nil
+}
 
 const (
 	maxRequestSize  = 10 * 1024 // 10KB max request size
@@ -100,17 +147,28 @@ func (r *Responder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := r.handleRequest(requestBytes)
+	result, err := r.handleRequest(requestBytes)
 	if err != nil {
 		log.Printf("Error handling request: %v", err)
-		r.writeError(w, ocsp.InternalError)
+		if errors.Is(err, ErrMalformedRequest) {
+			r.writeError(w, ocsp.Malformed)
+		} else {
+			r.writeError(w, ocsp.InternalError)
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", ocspContentType)
-	w.Header().Set("Cache-Control", "max-age=3600, public, no-transform, must-revalidate")
+
+	// RFC 6960 Section 4.4.1: Responses with nonce should not be cached
+	if result.hasNonce {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	} else {
+		w.Header().Set("Cache-Control", "max-age=3600, public, no-transform, must-revalidate")
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	w.Write(result.response)
 }
 
 func (r *Responder) parseGetRequest(req *http.Request) ([]byte, error) {
@@ -138,12 +196,21 @@ func (r *Responder) parsePostRequest(req *http.Request) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(req.Body, maxRequestSize))
 }
 
-func (r *Responder) handleRequest(requestBytes []byte) ([]byte, error) {
+// handleResult contains the OCSP response and metadata
+type handleResult struct {
+	response []byte
+	hasNonce bool
+}
+
+func (r *Responder) handleRequest(requestBytes []byte) (*handleResult, error) {
 	// Parse the OCSP request
 	ocspReq, err := ocsp.ParseRequest(requestBytes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrMalformedRequest, err)
 	}
+
+	// Extract nonce if present (RFC 6960 Section 4.4.1)
+	nonce := extractNonce(requestBytes)
 
 	// Look up the certificate status
 	status, err := r.source.Response(ocspReq.SerialNumber)
@@ -158,9 +225,18 @@ func (r *Responder) handleRequest(requestBytes []byte) ([]byte, error) {
 		Reason:         status.Reason,
 		RevokedAt:      status.RevokedAt,
 		SkipValidation: true, // We only have serial, can't verify signature
+		Nonce:          nonce,
 	}
 
-	return r.signer.Sign(signReq)
+	response, err := r.signer.Sign(signReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &handleResult{
+		response: response,
+		hasNonce: len(nonce) > 0,
+	}, nil
 }
 
 // createMinimalCert creates a minimal certificate for OCSP signing
