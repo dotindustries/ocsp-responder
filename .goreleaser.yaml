@@ -28,11 +28,13 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - README.md
       - LICENSE*
@@ -53,19 +55,8 @@ changelog:
       - Merge pull request
       - Merge branch
 
-dockers:
-  - image_templates:
-      - "ghcr.io/dot-inc/ocsp-responder:{{ .Tag }}"
-      - "ghcr.io/dot-inc/ocsp-responder:latest"
-    use: podman
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--platform=linux/amd64"
+# Container image is built separately with Podman in the release workflow
+# (goreleaser v2 doesn't support podman, only docker/buildx)
 
 release:
   github:

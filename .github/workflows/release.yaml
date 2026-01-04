@@ -22,10 +22,6 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Log in to GitHub Container Registry with Podman
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -33,3 +29,25 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build container image with Podman
+        run: |
+          podman build \
+            --pull \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.title=ocsp-responder" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ github.ref_name }}" \
+            --platform linux/amd64 \
+            -t ghcr.io/dot-inc/ocsp-responder:${{ github.ref_name }} \
+            -t ghcr.io/dot-inc/ocsp-responder:latest \
+            .
+
+      - name: Push container image
+        run: |
+          podman push ghcr.io/dot-inc/ocsp-responder:${{ github.ref_name }}
+          podman push ghcr.io/dot-inc/ocsp-responder:latest
