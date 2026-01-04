@@ -35,11 +35,11 @@ func createSource(cfg SourceConfig) (ocsp.Source, func() error, error) {
 			InsecureSkipVerify: cfg.InsecureSkipTLS,
 		}
 
-		// Load CA certificate if provided
+		// Load CA certificate if provided (supports file or URL)
 		if cfg.CACertFile != "" {
-			caCert, err := os.ReadFile(cfg.CACertFile)
+			caCert, err := ocsp.LoadPEM(cfg.CACertFile, cfg.InsecureSkipTLS)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to read CA certificate: %w", err)
+				return nil, nil, fmt.Errorf("failed to load CA certificate: %w", err)
 			}
 			urlCfg.RootCAs = x509.NewCertPool()
 			if !urlCfg.RootCAs.AppendCertsFromPEM(caCert) {
@@ -90,7 +90,7 @@ func main() {
 
 	// Check required flags
 	if *issuerFile == "" || *responderFile == "" || *keyFile == "" {
-		fmt.Fprintf(os.Stderr, "Usage: %s -issuer <cert> -responder <cert> -key <key> [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s -issuer <cert|url> -responder <cert|url> -key <keyfile> [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
@@ -99,12 +99,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  # With CRL from step-ca or any CA:\n")
 		fmt.Fprintf(os.Stderr, "  %s -issuer ca.pem -responder ocsp.pem -key ocsp-key.pem -crl-url https://ca.example.com/crl\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  # With local CRL file:\n")
-		fmt.Fprintf(os.Stderr, "  %s -issuer ca.pem -responder ocsp.pem -key ocsp-key.pem -crl-file /path/to/crl.der\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -issuer ca.pem -responder ocsp.pem -key ocsp-key.pem -crl-file /path/to/crl.der\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # Fetch issuer and responder certs from URL:\n")
+		fmt.Fprintf(os.Stderr, "  %s -issuer https://pki.example.com/ca.crt -responder https://pki.example.com/ca.crt -key ocsp-key.pem\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	// Create signer from files
-	signer, err := ocsp.NewSignerFromFile(*issuerFile, *responderFile, *keyFile, *interval)
+	// Create signer from paths (certs can be files or URLs, key must be file)
+	signer, err := ocsp.NewSignerFromPaths(*issuerFile, *responderFile, *keyFile, *interval, *insecureSkipTLS)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}
@@ -160,6 +162,7 @@ func main() {
 	log.Printf("Starting OCSP responder on %s", *addr)
 	log.Printf("  Issuer cert: %s", *issuerFile)
 	log.Printf("  Responder cert: %s", *responderFile)
+	log.Printf("  Responder key: %s", *keyFile)
 	log.Printf("  Response interval: %s", *interval)
 	if *crlURL != "" {
 		log.Printf("  CRL URL: %s", *crlURL)

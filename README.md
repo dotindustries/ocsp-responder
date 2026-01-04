@@ -4,9 +4,10 @@ A lightweight, RFC 6960 compliant OCSP responder written in Go. Designed for use
 
 ## Features
 
-- fully RFC-6960 compliant OCSP responses
+- Fully RFC-6960 compliant OCSP responses
 - HTTP GET and POST request support
 - Nonce extension support (optional, doesn't break caching)
+- **Load certificates from URLs or files** - Fetch issuer cert from PKI endpoints
 - Multiple certificate status sources:
   - **URLSource** - Fetch CRL from HTTP(S) endpoints
   - **FileSource** - Read CRL from local files
@@ -80,19 +81,41 @@ make docker
   -crl-refresh 5m
 ```
 
+### Fetch Certificates from URL
+
+The `-issuer` and `-responder` flags accept both file paths and HTTP(S) URLs. This is useful when your certificates are published at a known PKI endpoint:
+
+```bash
+# Fetch issuer cert from URL, key from local file
+./ocsp-responder \
+  -issuer https://pki.example.com/intermediate_ca.crt \
+  -responder https://pki.example.com/intermediate_ca.crt \
+  -key /certs/intermediate_ca_key \
+  -crl-url https://ca.example.com/crl
+
+# Skip TLS verification (testing only!)
+./ocsp-responder \
+  -issuer https://pki.staging.example.com/ca.crt \
+  -responder https://pki.staging.example.com/ca.crt \
+  -key /certs/ocsp.key \
+  -insecure-skip-verify
+```
+
+> **Note**: The `-key` flag only accepts file paths (not URLs) for security reasons. Private keys should not be fetched over the network.
+
 ### Command Line Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-addr` | `:8080` | Address to listen on |
-| `-issuer` | (required) | Path to issuer certificate (PEM) |
-| `-responder` | (required) | Path to responder certificate (PEM) |
-| `-key` | (required) | Path to responder private key (PEM) |
+| `-issuer` | (required) | Path or URL to issuer certificate (PEM) |
+| `-responder` | (required) | Path or URL to responder certificate (PEM) |
+| `-key` | (required) | Path to responder private key file (PEM) |
 | `-interval` | `24h` | OCSP response validity interval |
 | `-crl-url` | | URL to fetch CRL from |
 | `-crl-file` | | Path to local CRL file |
 | `-crl-refresh` | `5m` | CRL refresh interval |
-| `-ca-cert` | | CA certificate for TLS verification |
+| `-ca-cert` | | Path or URL to CA certificate for TLS verification (CRL URL) |
 | `-insecure-skip-verify` | `false` | Skip TLS verification (testing only) |
 
 ## Certificate Status Sources
@@ -179,6 +202,17 @@ To use with [step-ca](https://smallstep.com/docs/step-ca), point the `-crl-url` 
   -responder /path/to/ocsp-responder.crt \
   -key /path/to/ocsp-responder.key \
   -crl-url https://your-step-ca:9000/crl
+```
+
+Or fetch the issuer certificate directly from your PKI URL:
+
+```bash
+./ocsp-responder \
+  -issuer https://pki.example.com/intermediate_ca.crt \
+  -responder /path/to/ocsp-responder.crt \
+  -key /path/to/ocsp-responder.key \
+  -crl-url https://your-step-ca:9000/crl \
+  -insecure-skip-verify
 ```
 
 Make sure CRL is enabled in your step-ca configuration (`ca.json`):

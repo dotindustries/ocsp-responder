@@ -6,6 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -46,7 +47,7 @@ type StandardSigner struct {
 	interval  time.Duration
 }
 
-// NewSignerFromFile reads certs and key from PEM files
+// NewSignerFromFile reads certs and key from PEM files (backward compatible)
 func NewSignerFromFile(issuerFile, responderFile, keyFile string, interval time.Duration) (Signer, error) {
 	issuerBytes, err := os.ReadFile(issuerFile)
 	if err != nil {
@@ -76,6 +77,46 @@ func NewSignerFromFile(issuerFile, responderFile, keyFile string, interval time.
 	key, err := ParsePrivateKeyPEM(keyBytes)
 	if err != nil {
 		return nil, err
+	}
+
+	return NewSigner(issuerCert, responderCert, key, interval)
+}
+
+// NewSignerFromPaths loads certs from file paths or URLs, and key from file only.
+// For -issuer and -responder: paths starting with http:// or https:// are fetched via HTTP GET.
+// For -key: only file paths are supported (private keys should not be fetched over network).
+func NewSignerFromPaths(issuerPath, responderPath, keyFile string, interval time.Duration, insecureSkipVerify bool) (Signer, error) {
+	// Load issuer certificate (file or URL)
+	issuerBytes, err := LoadPEM(issuerPath, insecureSkipVerify)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load issuer certificate: %w", err)
+	}
+
+	// Load responder certificate (file or URL)
+	responderBytes, err := LoadPEM(responderPath, insecureSkipVerify)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load responder certificate: %w", err)
+	}
+
+	// Load key from file only (not URLs for security)
+	keyBytes, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read responder key file: %w", err)
+	}
+
+	issuerCert, err := ParseCertificatePEM(issuerBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse issuer certificate: %w", err)
+	}
+
+	responderCert, err := ParseCertificatePEM(responderBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse responder certificate: %w", err)
+	}
+
+	key, err := ParsePrivateKeyPEM(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse responder key: %w", err)
 	}
 
 	return NewSigner(issuerCert, responderCert, key, interval)
