@@ -30,15 +30,20 @@ cd ocsp-responder
 make build
 ```
 
-### Docker
+### Container Image
 
 ```bash
+# Pull from GitHub Container Registry
+podman pull ghcr.io/dot-inc/ocsp-responder:latest
+# or with Docker
 docker pull ghcr.io/dot-inc/ocsp-responder:latest
 ```
 
-Or build locally:
+Or build locally (Podman recommended for better caching):
 
 ```bash
+make podman
+# or with Docker
 make docker
 ```
 
@@ -186,9 +191,21 @@ Make sure CRL is enabled in your step-ca configuration (`ca.json`):
 }
 ```
 
-## Docker Usage
+## Container Usage
 
-Run with Docker:
+Run with Podman (recommended):
+
+```bash
+podman run -p 8080:8080 \
+  -v /path/to/certs:/certs:ro,Z \
+  ghcr.io/dot-inc/ocsp-responder:latest \
+  -issuer /certs/ca.pem \
+  -responder /certs/ocsp.pem \
+  -key /certs/ocsp-key.pem \
+  -crl-url https://ca.example.com/crl
+```
+
+Or with Docker:
 
 ```bash
 docker run -p 8080:8080 \
@@ -205,7 +222,7 @@ docker run -p 8080:8080 \
 ### Prerequisites
 
 - Go 1.24+
-- Docker (optional)
+- Podman or Docker (optional, for container builds)
 - [goreleaser](https://goreleaser.com/) (for releases)
 
 ### Common Commands
@@ -223,7 +240,10 @@ make test-coverage
 # Run linter
 make lint
 
-# Build Docker image
+# Build container image (Podman - recommended)
+make podman
+
+# Build container image (Docker)
 make docker
 
 # Test release process (no publish)
@@ -246,7 +266,7 @@ Releases are automated via GitHub Actions. To create a release:
 2. GitHub Actions will automatically:
    - Build binaries for Linux, macOS, and Windows (amd64/arm64)
    - Create GitHub release with artifacts
-   - Push Docker image to GitHub Container Registry
+   - Build and push container image to GitHub Container Registry (using Podman)
 
 For local testing:
 

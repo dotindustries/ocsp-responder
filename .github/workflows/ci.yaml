@@ -58,5 +58,5 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Build Docker image
-        run: docker build -t ocsp-responder:test .
+      - name: Build container image with Podman
+        run: podman build -t ocsp-responder:test .

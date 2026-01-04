@@ -1,4 +1,4 @@
-.PHONY: build test clean docker release snapshot lint help
+.PHONY: build test clean docker podman release snapshot lint help
 
 # Variables
 BINARY_NAME=ocsp-responder
@@ -33,7 +33,15 @@ clean:
 	rm -f $(BINARY_NAME)
 	rm -f coverage.out coverage.html
 
-## docker: Build Docker image
+## podman: Build container image with Podman (recommended)
+podman:
+	podman build -t $(BINARY_NAME):$(VERSION) -t $(BINARY_NAME):latest .
+
+## podman-run: Run Podman container (requires certs mounted)
+podman-run:
+	@echo "Usage: podman run -v /path/to/certs:/certs:Z $(BINARY_NAME):latest -issuer /certs/ca.pem -responder /certs/ocsp.pem -key /certs/ocsp-key.pem"
+
+## docker: Build Docker image (use 'make podman' for better caching)
 docker:
 	docker build -t $(BINARY_NAME):$(VERSION) -t $(BINARY_NAME):latest .
 

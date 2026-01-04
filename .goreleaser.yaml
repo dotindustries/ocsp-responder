@@ -57,6 +57,7 @@ dockers:
   - image_templates:
       - "ghcr.io/dot-inc/ocsp-responder:{{ .Tag }}"
       - "ghcr.io/dot-inc/ocsp-responder:latest"
+    use: podman
     dockerfile: Dockerfile
     build_flag_templates:
       - "--pull"
