@@ -16,14 +16,30 @@ A lightweight, RFC 6960 compliant OCSP responder written in Go. Designed for use
 
 ## Installation
 
+### From Source
+
 ```bash
 go install github.com/dot-inc/ocsp-responder@latest
 ```
 
-Or build from source:
+Or clone and build:
 
 ```bash
-go build -o ocsp-responder .
+git clone https://github.com/dot-inc/ocsp-responder.git
+cd ocsp-responder
+make build
+```
+
+### Docker
+
+```bash
+docker pull ghcr.io/dot-inc/ocsp-responder:latest
+```
+
+Or build locally:
+
+```bash
+make docker
 ```
 
 ## Usage
@@ -170,12 +186,72 @@ Make sure CRL is enabled in your step-ca configuration (`ca.json`):
 }
 ```
 
-## Testing
+## Docker Usage
 
-Run the test suite:
+Run with Docker:
 
 ```bash
-go test ./... -v -cover
+docker run -p 8080:8080 \
+  -v /path/to/certs:/certs:ro \
+  ghcr.io/dot-inc/ocsp-responder:latest \
+  -issuer /certs/ca.pem \
+  -responder /certs/ocsp.pem \
+  -key /certs/ocsp-key.pem \
+  -crl-url https://ca.example.com/crl
+```
+
+## Development
+
+### Prerequisites
+
+- Go 1.24+
+- Docker (optional)
+- [goreleaser](https://goreleaser.com/) (for releases)
+
+### Common Commands
+
+```bash
+# Build binary
+make build
+
+# Run tests
+make test
+
+# Run tests with coverage report
+make test-coverage
+
+# Run linter
+make lint
+
+# Build Docker image
+make docker
+
+# Test release process (no publish)
+make release-dry-run
+
+# Show all available commands
+make help
+```
+
+### Creating a Release
+
+Releases are automated via GitHub Actions. To create a release:
+
+1. Tag the commit:
+   ```bash
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin v1.0.0
+   ```
+
+2. GitHub Actions will automatically:
+   - Build binaries for Linux, macOS, and Windows (amd64/arm64)
+   - Create GitHub release with artifacts
+   - Push Docker image to GitHub Container Registry
+
+For local testing:
+
+```bash
+make snapshot  # Creates snapshot release in dist/
 ```
 
 ## License

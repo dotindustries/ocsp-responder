@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+ocsp-responder
+*.exe
+dist/
+coverage.out
+coverage.html
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github/
+.goreleaser.yaml
+
+# Test files
+*_test.go
+testdata/
