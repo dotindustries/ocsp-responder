@@ -58,3 +58,21 @@ jobs:
         run: |
           podman push dotinc.azurecr.io/ocsp-responder:${{ github.ref_name }}
           podman push dotinc.azurecr.io/ocsp-responder:latest
+
+      - name: Notify Slack
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚀 *ocsp-responder ${{ github.ref_name }}* has been released!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚀 *ocsp-responder ${{ github.ref_name }}* has been released!\n\n<https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}|View Release>"
+                  }
+                }
+              ]
+            }' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
