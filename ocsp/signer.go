@@ -85,7 +85,8 @@ func NewSignerFromFile(issuerFile, responderFile, keyFile string, interval time.
 // NewSignerFromPaths loads certs from file paths or URLs, and key from file only.
 // For -issuer and -responder: paths starting with http:// or https:// are fetched via HTTP GET.
 // For -key: only file paths are supported (private keys should not be fetched over network).
-func NewSignerFromPaths(issuerPath, responderPath, keyFile string, interval time.Duration, insecureSkipVerify bool) (Signer, error) {
+// If keyPassword is non-empty, it will be used to decrypt an encrypted private key.
+func NewSignerFromPaths(issuerPath, responderPath, keyFile, keyPassword string, interval time.Duration, insecureSkipVerify bool) (Signer, error) {
 	// Load issuer certificate (file or URL)
 	issuerBytes, err := LoadPEM(issuerPath, insecureSkipVerify)
 	if err != nil {
@@ -114,7 +115,7 @@ func NewSignerFromPaths(issuerPath, responderPath, keyFile string, interval time
 		return nil, fmt.Errorf("failed to parse responder certificate: %w", err)
 	}
 
-	key, err := ParsePrivateKeyPEM(keyBytes)
+	key, err := ParsePrivateKeyPEMWithPassword(keyBytes, keyPassword)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse responder key: %w", err)
 	}

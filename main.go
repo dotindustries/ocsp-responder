@@ -77,6 +77,7 @@ func main() {
 		issuerFile    = flag.String("issuer", "", "Path to issuer certificate (PEM)")
 		responderFile = flag.String("responder", "", "Path to responder certificate (PEM)")
 		keyFile       = flag.String("key", "", "Path to responder private key (PEM)")
+		keyPassword   = flag.String("key-password", "", "Password for encrypted private key (if key is encrypted)")
 		interval      = flag.Duration("interval", 24*time.Hour, "OCSP response validity interval")
 
 		// CRL source options
@@ -101,12 +102,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  # With local CRL file:\n")
 		fmt.Fprintf(os.Stderr, "  %s -issuer ca.pem -responder ocsp.pem -key ocsp-key.pem -crl-file /path/to/crl.der\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  # Fetch issuer and responder certs from URL:\n")
-		fmt.Fprintf(os.Stderr, "  %s -issuer https://pki.example.com/ca.crt -responder https://pki.example.com/ca.crt -key ocsp-key.pem\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -issuer https://pki.example.com/ca.crt -responder https://pki.example.com/ca.crt -key ocsp-key.pem\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # With encrypted private key:\n")
+		fmt.Fprintf(os.Stderr, "  %s -issuer ca.pem -responder ocsp.pem -key ocsp-key.pem -key-password 'mypassword'\n", os.Args[0])
 		os.Exit(1)
 	}
 
 	// Create signer from paths (certs can be files or URLs, key must be file)
-	signer, err := ocsp.NewSignerFromPaths(*issuerFile, *responderFile, *keyFile, *interval, *insecureSkipTLS)
+	signer, err := ocsp.NewSignerFromPaths(*issuerFile, *responderFile, *keyFile, *keyPassword, *interval, *insecureSkipTLS)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}

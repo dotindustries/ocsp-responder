@@ -110,7 +110,7 @@ func TestNewSignerFromPaths_Files(t *testing.T) {
 	files := createTestFiles(t)
 	defer files.cleanup()
 
-	signer, err := NewSignerFromPaths(files.issuerFile, files.responderFile, files.keyFile, 0, false)
+	signer, err := NewSignerFromPaths(files.issuerFile, files.responderFile, files.keyFile, "", 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestNewSignerFromPaths_IssuerFromURL(t *testing.T) {
 	defer server.Close()
 
 	// Load issuer from URL, responder and key from files
-	signer, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, 0, false)
+	signer, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, "", 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestNewSignerFromPaths_BothCertsFromURL(t *testing.T) {
 	defer server.Close()
 
 	// Load both certs from URL, key from file
-	signer, err := NewSignerFromPaths(server.URL+"/issuer.pem", server.URL+"/responder.pem", files.keyFile, 0, false)
+	signer, err := NewSignerFromPaths(server.URL+"/issuer.pem", server.URL+"/responder.pem", files.keyFile, "", 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestNewSignerFromPaths_InvalidIssuerURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, 0, false)
+	_, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, "", 0, false)
 	if err == nil {
 		t.Error("Expected error for 404 on issuer URL")
 	}
@@ -207,7 +207,7 @@ func TestNewSignerFromPaths_InvalidCertData(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, 0, false)
+	_, err := NewSignerFromPaths(server.URL+"/issuer.pem", files.responderFile, files.keyFile, "", 0, false)
 	if err == nil {
 		t.Error("Expected error for invalid certificate data")
 	}
@@ -217,7 +217,7 @@ func TestNewSignerFromPaths_MissingKeyFile(t *testing.T) {
 	files := createTestFiles(t)
 	defer files.cleanup()
 
-	_, err := NewSignerFromPaths(files.issuerFile, files.responderFile, "/nonexistent/key.pem", 0, false)
+	_, err := NewSignerFromPaths(files.issuerFile, files.responderFile, "/nonexistent/key.pem", "", 0, false)
 	if err == nil {
 		t.Error("Expected error for missing key file")
 	}
