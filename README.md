@@ -34,10 +34,10 @@ make build
 ### Container Image
 
 ```bash
-# Pull from GitHub Container Registry
-podman pull ghcr.io/dotindustries/ocsp-responder:latest
+# Pull from Azure Container Registry
+podman pull dotinc.azurecr.io/ocsp-responder:latest
 # or with Docker
-docker pull ghcr.io/dotindustries/ocsp-responder:latest
+docker pull dotinc.azurecr.io/ocsp-responder:latest
 ```
 
 Or build locally (Podman recommended for better caching):
@@ -232,7 +232,7 @@ Run with Podman (recommended):
 ```bash
 podman run -p 8080:8080 \
   -v /path/to/certs:/certs:ro,Z \
-  ghcr.io/dotindustries/ocsp-responder:latest \
+  dotinc.azurecr.io/ocsp-responder:latest \
   -issuer /certs/ca.pem \
   -responder /certs/ocsp.pem \
   -key /certs/ocsp-key.pem \
@@ -244,7 +244,7 @@ Or with Docker:
 ```bash
 docker run -p 8080:8080 \
   -v /path/to/certs:/certs:ro \
-  ghcr.io/dotindustries/ocsp-responder:latest \
+  dotinc.azurecr.io/ocsp-responder:latest \
   -issuer /certs/ca.pem \
   -responder /certs/ocsp.pem \
   -key /certs/ocsp-key.pem \
@@ -300,7 +300,7 @@ Releases are automated via GitHub Actions. To create a release:
 2. GitHub Actions will automatically:
    - Build binaries for Linux, macOS, and Windows (amd64/arm64)
    - Create GitHub release with artifacts
-   - Build and push container image to GitHub Container Registry (using Podman)
+   - Build and push container image to Azure Container Registry (using Podman)
 
 For local testing:
 
