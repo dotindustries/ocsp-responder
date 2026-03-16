@@ -41,10 +41,14 @@ func createSource(cfg SourceConfig) (ocsp.Source, func() error, error) {
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to load CA certificate: %w", err)
 			}
-			urlCfg.RootCAs = x509.NewCertPool()
-			if !urlCfg.RootCAs.AppendCertsFromPEM(caCert) {
+			pool, err := x509.SystemCertPool()
+			if err != nil {
+				pool = x509.NewCertPool()
+			}
+			if !pool.AppendCertsFromPEM(caCert) {
 				return nil, nil, fmt.Errorf("failed to parse CA certificate")
 			}
+			urlCfg.RootCAs = pool
 		}
 
 		source, err := ocsp.NewURLSource(urlCfg)
